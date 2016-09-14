@@ -8,9 +8,9 @@
 #include <util/delay.h>                // for _delay_ms()
 #include "uart.h" // includes library for use of AVR
 
-int main(void)
-{
-    DDRB = 0b10000000;                  // initialize port with bit7 as output
+
+int main(void) {
+    DDRB = 0b10010000;                  // initialize port with bit7 as output
     
     
     cli();
@@ -27,23 +27,33 @@ int main(void)
     // enable timer compare interrupt:
     TIMSK1 |= (1 << OCIE1A);
 
-    sei();
+
+    EICRB = 0b11; // define interrupção no INT4 na rampa de SUBIDA
+    EIMSK = 0b00010000; // seta interrupção no INT4 (PE4 = Digital Pin 2)
+
+    uartInit();
+
+    sei(); // ativa interrupções
     
-    while(1)
-    {
-        // turn LED on
-        //PORTB |= 0b10000000;            // makes PB7 = 1
-        //uartInit();
-        //uartSendString("spam", 4);
-        _delay_ms(1000);                // wait x milliseconds
+
+    while(1) {
+        // uartSendString("spam", 4);
+        _delay_ms(100);                // wait x milliseconds
         
-        //LED off
-        //PORTB &= ~0b10000000;            // makes PB7 = 0
-        //_delay_ms(500);                // wait 500 milliseconds
     }
 }
 
-ISR(TIMER1_COMPA_vect)
-{
+ISR(TIMER1_COMPA_vect) {
+    PORTB ^= 0b00010000; // pino 10
+    // PORTB ^= 0b10000000; // pino 13
+}
+
+ISR(INT4_vect) {
     PORTB ^= 0b10000000;
 }
+
+/*
+ISR(USART0_RX_vect) {
+    //PORTB ^= 0b10000000;
+    //tempo = UDR0;   
+}*/

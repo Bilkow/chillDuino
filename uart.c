@@ -27,7 +27,7 @@ void uartInit(void) { //initialize uart
 void uartSendString(char *string, int size) { // sends String via uart
     int charIndex;
     for (charIndex=0; charIndex < size; charIndex++) {
-    while (! (UCSR0A && 1 << UDRE0));
+    while (! (UCSR0A & (1 << UDRE0) ) );
     UDR0 = string[charIndex];
     
 
