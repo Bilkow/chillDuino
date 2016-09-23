@@ -17,6 +17,7 @@ unsigned long int milis;
 
 int main(void) {
     DDRB = 0b10010000;                  // initialize port with bit7 and bit4 as output    
+    PORTE |= 1 << 4; // seta o pullup do pino 2;    
 
     cli(); // clear interruptions
     TCCR1A = 0;
@@ -45,7 +46,6 @@ int main(void) {
 
     sei(); // ativa interrupções
 
-    PORTF |= 1 << 2; // seta o pullup do pino 2;    
 
     while(1) {
         // uartSendString("spam", 4);
