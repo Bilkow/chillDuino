@@ -34,10 +34,17 @@ int main(void) {
     // turn on CTC modPORTBe:
     // TCCR1B |= (1 << WGM12);
     // Set CS10 and CS12 bits for 1024 prescaler:
-    TCCR1B |= (1 << CS10);
+    // TCCR1B |= (1 << CS10);
     // TCCR1B |= (1 << CS12);
     // enable timer compare interrupt:
-    TIMSK1 |= (1 << OCIE1A);
+    // TIMSK1 |= (1 << OCIE1A);
+
+
+    // new clock: no interruptions!!
+    // select clock with prescaler = 8!!! (tabela 17-6)
+    TCCR1B |= (1 << CS11);
+
+    // TCNT1H e TCNT1L -> direct I/O with R/W in the 16-bit counter!!
 
 
     // interrupcaoPORTB INT4 (PINO 2)
@@ -52,8 +59,11 @@ int main(void) {
     while(1) {
         // uartSendString("spam", 4);
         if (UCSR0A & (1 << RXC0)) {
-            char recv_byte = UDR0+1;
+            char recv_byte = UDR0, time_read[2];
+            time_read[0] = TCNT1L;
+            time_read[1] = TCNT1H;
             uartSendString(&recv_byte, 1);
+            uartSendString(time_read, 2);
         }
     }
 }
