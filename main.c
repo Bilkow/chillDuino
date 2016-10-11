@@ -14,10 +14,12 @@ unsigned long int tempo_inicial;
 unsigned long int delta_t[5];
 unsigned char numero_interrupt;
 unsigned long int milis;
+unsigned char PWM_val;
 
 int main(void) {
-    DDRB = 0b10010000;                  // initialize port with bit7 and bit4 as output    
-    PORTE |= 1 << 4; // seta o pullup do pino 2;    
+    PWM_val = 255;
+    DDRB = 0b10010000;                  // initialize port with bit7 and bit4 as output
+    PORTE |= 1 << 4; // seta o pullup do pino 2;
 
     cli(); // clear interruptions
     TCCR1A = 0;
@@ -28,9 +30,9 @@ int main(void) {
     // = 1000;
 
     // set compare match register to desired timer count:
-    OCR1A = 1599; // interrompe a cada 0.1 ms
+    // OCR1A = 1599; // interrompe a cada 0.1 ms
     // turn on CTC modPORTBe:
-    TCCR1B |= (1 << WGM12);
+    // TCCR1B |= (1 << WGM12);
     // Set CS10 and CS12 bits for 1024 prescaler:
     TCCR1B |= (1 << CS10);
     // TCCR1B |= (1 << CS12);
@@ -49,28 +51,30 @@ int main(void) {
 
     while(1) {
         // uartSendString("spam", 4);
-        _delay_ms(1000);                // wait x milliseconds
-        
+        if (UCSR0A & (1 << RXC0)) {
+            char recv_byte = UDR0+1;
+            uartSendString(&recv_byte, 1);
+        }
     }
 }
 
 ISR(TIMER1_COMPA_vect) {
 
-    
+
     milis++;
-    
-    
+
+
     // PORTB ^= 0b00010000; // pino 10
     if (!(milis % 10000)) {
         char mensagem[8];
         unsigned long int f_rpm;
         f_rpm = (long int)600000*5/(delta_t[0] + delta_t[1] + delta_t[2] + delta_t[3] + delta_t[4]);
-    
+
         sprintf(mensagem, "%8lu", f_rpm);
         uartSendString(mensagem, 8);
-        
 
-        PORTB ^= 0b10000000; // pino 13 
+
+        PORTB ^= 0b10000000; // pino 13
     }
 }
 
@@ -79,7 +83,7 @@ ISR(TIMER1_COMPA_vect) {
 ISR(INT4_vect) {
     int i;
     PORTB ^= 0b10000000;
-    
+
     numero_interrupt++;
     if (numero_interrupt == 1)
         tempo_inicial = milis;
@@ -95,5 +99,5 @@ ISR(INT4_vect) {
 /*
 ISR(USART0_RX_vect) {
     //PORTB ^= 0b10000000;
-    //tempo = UDR0;   
+    //tempo = UDR0;
 }*/
