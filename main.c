@@ -10,14 +10,20 @@
 #include "uart.h" // includes library for use of AVR
 #include <stdio.h> // sprintf()
 
-unsigned long int tempo_inicial;
-unsigned long int delta_t[5];
+#define TEMPO_AMOSTRAGEM 30000 // 0.120/0.000004
+unsigned int desvio_acumulado;
+
+// unsigned long int tempo_inicial;
+// unsigned long int delta_t[5];
 unsigned char numero_interrupt;
-unsigned long int milis;
+// unsigned long int milis;
 unsigned char PWM_val;
 
 int main(void) {
+    desvio_acumulado = 0;
+    numero_interrupt = 0;
     PWM_val = 255;
+
     DDRB = 0b10010000;                  // initialize port with bit7 and bit4 as output
     PORTE |= 1 << 4; // seta o pullup do pino 2;
 
@@ -25,9 +31,7 @@ int main(void) {
     TCCR1A = 0;
     TCCR1B = 0;
 
-    milis = 0;
-    numero_interrupt = 0;
-    // = 1000;
+    // milis = 0;
 
     // set compare match register to desired timer count:
     // OCR1A = 1599; // interrompe a cada 0.1 ms
@@ -41,8 +45,8 @@ int main(void) {
 
 
     // new clock: no interruptions!!
-    // select clock with prescaler = 8!!! (tabela 17-6)
-    TCCR1B |= (1 << CS11);
+    // select clock with prescaler = 64 (12 bits de resolucao)!!! (tabela 17-6)
+    TCCR1B |= (1 << CS11) + (1 << CS10);
 
     // TCNT1H e TCNT1L -> direct I/O with R/W in the 16-bit counter!!
 
@@ -59,55 +63,44 @@ int main(void) {
     while(1) {
         // uartSendString("spam", 4);
         if (UCSR0A & (1 << RXC0)) {
-            char recv_byte = UDR0, time_read[2];
-            time_read[0] = TCNT1L;
-            time_read[1] = TCNT1H;
-            uartSendString(&recv_byte, 1);
-            uartSendString(time_read, 2);
+            PWM_val = UDR0;
+            // char recv_byte = UDR0, time_read[2];
+            // time_read[0] = TCNT1L;
+            // time_read[1] = TCNT1H;
+            // uartSendString(&recv_byte, 1);
+            // uartSendString(time_read, 2);
         }
     }
 }
 
-ISR(TIMER1_COMPA_vect) {
 
-
-    milis++;
-
-
-    // PORTB ^= 0b00010000; // pino 10
-    if (!(milis % 10000)) {
-        char mensagem[8];
-        unsigned long int f_rpm;
-        f_rpm = (long int)600000*5/(delta_t[0] + delta_t[1] + delta_t[2] + delta_t[3] + delta_t[4]);
-
-        sprintf(mensagem, "%8lu", f_rpm);
-        uartSendString(mensagem, 8);
-
-
-        PORTB ^= 0b10000000; // pino 13
-    }
-}
+//  --- calculo de frequência ---
+// unsigned long int f_rpm;
+// f_rpm = (long int)600000*5/(delta_t[0] + delta_t[1] + delta_t[2] + delta_t[3] + delta_t[4]);
+//
+// sprintf(mensagem, "%8lu", f_rpm);
+// uartSendString(mensagem, 8);
 
 
 // interrupt ventilador
 ISR(INT4_vect) {
-    int i;
     PORTB ^= 0b10000000;
 
     numero_interrupt++;
-    if (numero_interrupt == 1)
-        tempo_inicial = milis;
-    else if (numero_interrupt == 3) {
-        for (i = 0; i < 4; i++)  {
-            delta_t[i+1] = delta_t[i];
+    if (numero_interrupt == 2) {
+        unsigned int tempo;
+        unsigned int f_rpm;
+        tempo = TCNT1L + (TCNT1H << 8);
+        TCNT1H = 0;
+        TCNT1L = 0;
+        f_rpm = 15000000/tempo; // 60/(tempo/250000)
+        if (desvio_acumulado < TEMPO_AMOSTRAGEM) {
+            char tamanho, velocidade[5];
+            tamanho = sprintf(velocidade, "%u ", f_rpm);
+            uartSendString(velocidade, tamanho);
         }
-        delta_t[0] = milis - tempo_inicial;
+        else
+            desvio_acumulado -= TEMPO_AMOSTRAGEM;
         numero_interrupt = 0;
     }
 }
-
-/*
-ISR(USART0_RX_vect) {
-    //PORTB ^= 0b10000000;
-    //tempo = UDR0;
-}*/
