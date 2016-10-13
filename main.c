@@ -88,12 +88,20 @@ ISR(INT4_vect) {
 
     numero_interrupt++;
     if (numero_interrupt == 2) {
-        unsigned int tempo;
+        unsigned int periodo;
         unsigned int f_rpm;
-        tempo = TCNT1L + (TCNT1H << 8);
+        numero_interrupt = 0;
+        periodo = TCNT1L + (TCNT1H << 8);
         TCNT1H = 0;
         TCNT1L = 0;
-        f_rpm = 15000000/tempo; // 60/(tempo/250000)
+        if (periodo <= TEMPO_AMOSTRAGEM)
+            desvio_acumulado += TEMPO_AMOSTRAGEM - periodo;
+        else {
+            desvio_acumulado = 0;
+            uartSendString("erro ", 5)
+            return;
+        }
+        f_rpm = 15000000/periodo; // 60/(tempo/250000)
         if (desvio_acumulado < TEMPO_AMOSTRAGEM) {
             char tamanho, velocidade[5];
             tamanho = sprintf(velocidade, "%u ", f_rpm);
@@ -101,6 +109,5 @@ ISR(INT4_vect) {
         }
         else
             desvio_acumulado -= TEMPO_AMOSTRAGEM;
-        numero_interrupt = 0;
     }
 }
