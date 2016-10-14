@@ -11,7 +11,7 @@
 #include <stdio.h> // sprintf()
 
 #define TEMPO_AMOSTRAGEM 30000 // 0.120/0.000004
-unsigned int desvio_acumulado;
+int desvio_acumulado;
 
 // unsigned long int tempo_inicial;
 // unsigned long int delta_t[5];
@@ -74,6 +74,12 @@ int main(void) {
 }
 
 
+void envia_valor(int valor) {
+    char tamanho, texto_valor[5];
+    tamanho = sprintf(texto_valor, "%u ", valor);
+    uartSendString(texto_valor, tamanho);
+}
+
 //  --- calculo de frequência ---
 // unsigned long int f_rpm;
 // f_rpm = (long int)600000*5/(delta_t[0] + delta_t[1] + delta_t[2] + delta_t[3] + delta_t[4]);
@@ -94,19 +100,23 @@ ISR(INT4_vect) {
         periodo = TCNT1L + (TCNT1H << 8);
         TCNT1H = 0;
         TCNT1L = 0;
-        if (periodo <= TEMPO_AMOSTRAGEM)
-            desvio_acumulado += TEMPO_AMOSTRAGEM - periodo;
-        else {
-            desvio_acumulado = 0;
-            uartSendString("erro ", 5)
-            return;
-        }
         f_rpm = 15000000/periodo; // 60/(tempo/250000)
-        if (desvio_acumulado < TEMPO_AMOSTRAGEM) {
-            char tamanho, velocidade[5];
-            tamanho = sprintf(velocidade, "%u ", f_rpm);
-            uartSendString(velocidade, tamanho);
+        
+        desvio_acumulado += TEMPO_AMOSTRAGEM - periodo;
+        
+#ifdef DEBUG 
+        char tamanho, texto_valor[5];
+        tamanho = sprintf(texto_valor, " desvio(%d) periodo(%d) ", desvio_acumulado, periodo);
+        uartSendString(texto_valor, tamanho);
+#endif
+        
+        while (desvio_acumulado < 0) { // caso o periodo seja maior que o tempo de amostragem!
+            envia_valor(f_rpm);
+            desvio_acumulado += TEMPO_AMOSTRAGEM;
         }
+        
+        if (desvio_acumulado < TEMPO_AMOSTRAGEM)
+            envia_valor(f_rpm);
         else
             desvio_acumulado -= TEMPO_AMOSTRAGEM;
     }
