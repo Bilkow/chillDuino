@@ -80,6 +80,8 @@ ISR(INT4_vect) {
     PORTB ^= 0b10000000;
 
     numero_interrupt++;
+    if (numero_interrupt == 1)
+        _delay_us(100);
     if (numero_interrupt == 2) {
         unsigned int periodo;
         unsigned int f_rpm;
