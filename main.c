@@ -118,22 +118,23 @@ ISR(INT4_vect) {
     numero_interrupt++;
     if (numero_interrupt == 1)
         _delay_us(100);
-    if (numero_interrupt == 2) {
+    else if (numero_interrupt >= 2) {
         unsigned int tempo_atual;
         char divisao_atual;
         unsigned int periodo;
         unsigned int f_rpm;
-        tempo_atual = (unsigned int)TCNT3L + (unsigned int)(TCNT3H << 8);
-        divisao_atual = tempo_atual > 1875;
+
+	numero_interrupt = 0;
+	periodo = TCNT1L + (TCNT1H << 8);
+        TCNT1H = 0;
+        TCNT1L = 0;
         
+	tempo_atual = (unsigned int)TCNT3L + (unsigned int)(TCNT3H << 8);
+        divisao_atual = tempo_atual > 1875;
         if (divisao_atual == divisao_anterior)
           return;
         divisao_anterior = divisao_atual;
         
-        numero_interrupt = 0;
-        periodo = TCNT1L + (TCNT1H << 8);
-        TCNT1H = 0;
-        TCNT1L = 0;
         f_rpm = 15000000/periodo; // 60/(tempo/250000)
 
         envia_valor(f_rpm);
