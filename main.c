@@ -5,9 +5,9 @@
 
 
 #include <avr/io.h>  // libAVR
-#include <avr/interrupt.h> //for interruptions
+#include <avr/interrupt.h> // for interruptions
 #include <util/delay.h>                // for _delay_ms()
-#include "uart.h" // includes library for use of AVR
+#include "uart.h" // UART functions
 #include <stdio.h> // sprintf()
 
 #define TEMPO_AMOSTRAGEM 30000 // 0.120/0.000004
@@ -23,7 +23,7 @@ int main(void) {
     numero_interrupt = 0;
     PWM_val = 127;
 
-    DDRB |= (1 << 7);                  // initialize port with bit7 as output (led)
+    DDRB |= (1 << 7);  // initialize port with bit7 as output (led)
     PORTE |= (1 << 4); // seta o pullup do pino 2;
 
     cli(); // clear interruptions
@@ -67,10 +67,10 @@ int main(void) {
     // seta o topo OCR3A como 3750 para obter um periodo de 240 ms.
     OCR3AH = 0b1110;
     OCR3AL = 0b10100110;
-    
+
     uartInit();
 
-    sei(); // ativa interrupções
+    sei(); // set interruptions
 
 
     while(1) {
