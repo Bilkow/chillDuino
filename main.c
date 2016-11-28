@@ -12,13 +12,14 @@
 #include <stdlib.h>
 
 #define TEMPO_AMOSTRAGEM 30000 // 0.120/0.000004
-#define KP 6.28
-#define KD 0.89
-#define KI 22.18
+#define KP 0.01
+#define KI 0.02
+#define KD 0.3141592
 char divisao_anterior;
 
 unsigned char numero_interrupt;
-
+char passou;
+char subindo;
 int freq_esperada;
 int erro_somatorio;
 int freq_anterior;
@@ -28,7 +29,8 @@ void envia_valor(int valor);
 int main(void) {
     char string_recebida[8];
     int string_position = 0;
-
+    passou = 0;
+    subindo = 1;
     freq_esperada = 1500;
     freq_anterior = 1500;
     erro_somatorio = 0;
@@ -87,23 +89,6 @@ int main(void) {
 
 
     while(1) {
-        //unsigned int tempo_atual;
-        //char buffer [10];
-        //tempo_atual = (unsigned int)TCNT3L + (unsigned int)(TCNT3H << 8);
-        //uartSendString(buffer, sprintf(buffer, "%u\n", tempo_atual));
-
-
-        //char divisao_atual;
-        //tempo_atual = (unsigned int)TCNT3L + (unsigned int)(TCNT3H << 8);
-        //divisao_atual = tempo_atual > 1875;
-        //if (divisao_atual == divisao_anterior)
-        //  continue;
-        //divisao_anterior = divisao_atual;
-        //uartSendString("yolo\n", 5);
-
-        //uartSendString(&TCNT3L, 1);
-        //uartSendString(&TCNT3H, 1);
-        //PORTB ^= (tempo_atual > 1875) << 7; 
         if (UCSR0A & (1 << RXC0)) {
             //OCR2A = UDR0;
             char char_recebido = UDR0;
@@ -116,6 +101,8 @@ int main(void) {
             }
             else if (char_recebido == 'm') {
               freq_esperada = strtol(string_recebida, NULL, 0);
+	      passou = 0;
+	      subindo = freq_esperada > freq_anterior ? 1 : 0;
               //uartSendString(string_recebida, 8);
               envia_valor(freq_esperada);
               string_position = -1;
@@ -124,11 +111,6 @@ int main(void) {
               string_position = -1;
             string_position++;
             
-            // char recv_byte = UDR0, time_read[2];
-            // time_read[0] = TCNT1L;
-            // time_read[1] = TCNT1H;
-            // uartSendString(&recv_byte, 1);
-            // uartSendString(time_read, 2);
         }
     }
 }
@@ -173,13 +155,28 @@ ISR(INT4_vect) {
 
             //controlador PID
             erro = freq_esperada - freq_atual;
-            erro_somatorio += erro;
-            freq_dif = freq_atual - freq_anterior;
+	    erro_somatorio += erro;
+	    if (erro_somatorio > 20000)
+	      erro_somatorio = 20000;
+	    else if (erro_somatorio < 350)
+	      erro_somatorio = 350;
+	    if (!passou && ((subindo && freq_atual > freq_esperada) || (!subindo && freq_atual < freq_esperada))) {
+	      if (subindo)
+	        erro_somatorio /= 2;
+	      else
+		erro_somatorio *= 1.6;
+	      passou = 1;
+	    }
+	    //else if (erro_somatorio < 350)
+	    //  erro_somatorio = 350;
+	    
+	    freq_dif = freq_atual - freq_anterior;
             freq_anterior = freq_atual;
-            PWM = erro * KP + erro_somatorio * KI + freq_dif * KD;
-            OCR2A = PWM > 255 ? 255 : PWM < 0 ? 0 : PWM;
+            PWM = erro * KP + erro_somatorio * KI - freq_dif * KD;
+            OCR2A = PWM > 255 ? 255 : PWM < 0x07 ? 0x07 : PWM;
 
-            
+	    //OCR2A = 0x7f;
+	    
             envia_valor(freq_atual);
           
         }
