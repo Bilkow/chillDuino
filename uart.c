@@ -34,11 +34,3 @@ void uartSendString(char *string, int size) { // sends String via uart
     }
 }
 
-/* void uartSendInt(int inteiro) { */
-/*     while (! (UCSR0A & (1 << UDRE0) ) ); */
-/*     UDR0 = (unsigned char)inteiro; */
-/*     while (! (UCSR0A & (1 << UDRE0) ) ); */
-/*     UDR0 = (unsigned char)(inteiro >> 8); */
-    
-
-/* } */
