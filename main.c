@@ -9,19 +9,32 @@
 #include <util/delay.h>                // for _delay_ms()
 #include "uart.h" // UART functions
 #include <stdio.h> // sprintf()
+#include <stdlib.h>
 
 #define TEMPO_AMOSTRAGEM 30000 // 0.120/0.000004
+#define KP 6.28
+#define KD 0.89
+#define KI 22.18
 char divisao_anterior;
 
 unsigned char numero_interrupt;
-unsigned char PWM_val;
 
+int freq_esperada;
+int erro_somatorio;
+int freq_anterior;
 
+void envia_valor(int valor);
 
 int main(void) {
+    char string_recebida[8];
+    int string_position = 0;
+
+    freq_esperada = 1500;
+    freq_anterior = 1500;
+    erro_somatorio = 0;
+    
     divisao_anterior = 1;
     numero_interrupt = 0;
-    PWM_val = 127;
 
     DDRB |= (1 << 7);  // initialize port with bit7 as output (led)
     PORTE |= (1 << 4); // seta o pullup do pino 2;
@@ -92,7 +105,25 @@ int main(void) {
         //uartSendString(&TCNT3H, 1);
         //PORTB ^= (tempo_atual > 1875) << 7; 
         if (UCSR0A & (1 << RXC0)) {
-            OCR2A = UDR0;
+            //OCR2A = UDR0;
+            char char_recebido = UDR0;
+            //uartSendString(&char_recebido, 1);
+            
+            string_recebida[string_position] = char_recebido;
+            if (string_position >= 7) {
+              uartSendString("String Position >= 7", 20);
+              string_position = -1;
+            }
+            else if (char_recebido == 'm') {
+              freq_esperada = strtol(string_recebida, NULL, 0);
+              //uartSendString(string_recebida, 8);
+              envia_valor(freq_esperada);
+              string_position = -1;
+            }
+            else if (char_recebido == 'c')
+              string_position = -1;
+            string_position++;
+            
             // char recv_byte = UDR0, time_read[2];
             // time_read[0] = TCNT1L;
             // time_read[1] = TCNT1H;
@@ -122,21 +153,35 @@ ISR(INT4_vect) {
         unsigned int tempo_atual;
         char divisao_atual;
         unsigned int periodo;
-        unsigned int f_rpm;
+        int freq_atual;
 
-	numero_interrupt = 0;
-	periodo = TCNT1L + (TCNT1H << 8);
+        numero_interrupt = 0;
+        periodo = TCNT1L + (TCNT1H << 8);
         TCNT1H = 0;
         TCNT1L = 0;
         
-	tempo_atual = (unsigned int)TCNT3L + (unsigned int)(TCNT3H << 8);
+        tempo_atual = (unsigned int)TCNT3L + (unsigned int)(TCNT3H << 8);
         divisao_atual = tempo_atual > 1875;
         if (divisao_atual == divisao_anterior)
-          return;
-        divisao_anterior = divisao_atual;
-        
-        f_rpm = 15000000/periodo; // 60/(tempo/250000)
+            return;
+        else {
+            int freq_dif;
+            int erro;
+            int PWM;
+            divisao_anterior = divisao_atual;
+            freq_atual = 15000000/periodo; // 60/(tempo/250000), frequencia em rpm
 
-        envia_valor(f_rpm);
+            //controlador PID
+            erro = freq_esperada - freq_atual;
+            erro_somatorio += erro;
+            freq_dif = freq_atual - freq_anterior;
+            freq_anterior = freq_atual;
+            PWM = erro * KP + erro_somatorio * KI + freq_dif * KD;
+            OCR2A = PWM > 255 ? 255 : PWM < 0 ? 0 : PWM;
+
+            
+            envia_valor(freq_atual);
+          
+        }
     }
 }
