@@ -4,7 +4,7 @@
 #define F_CPU 16000000UL // defines frequency of the AVR to 16 MHz
 #endif
 
-#define BAUD 9600
+#define BAUD 57600
 #include <util/setbaud.h> // sets UBRR constants, USE_2X, U2X0
 
 #include "uart.h"
@@ -27,9 +27,10 @@ void uartInit(void) { //initialize uart
 void uartSendString(char *string, int size) { // sends String via uart
     int charIndex;
     for (charIndex=0; charIndex < size; charIndex++) {
-    while (! (UCSR0A & (1 << UDRE0) ) );
-    UDR0 = string[charIndex];
-    
+        while (! (UCSR0A & (1 << UDRE0) ) );
+        UDR0 = string[charIndex];
+
 
     }
 }
+
